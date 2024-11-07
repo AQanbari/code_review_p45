@@ -12,6 +12,11 @@
 #include "linked_list.h"
 #include "common.h"
 
+static int get_bucket_index(ioopm_hash_table_t *ht, elem_t key) {
+    int index = (ht->func(key) % no_buckets + no_buckets) % no_buckets;
+    return index < 0 ? index + no_buckets : index;
+}
+
 bool eq_func(elem_t a, elem_t b)
 {
   return a.integer == b.integer;
@@ -139,11 +144,7 @@ option_t *ioopm_hash_table_lookup(ioopm_hash_table_t *ht, elem_t key)
 
 void ioopm_hash_table_insert(ioopm_hash_table_t *ht, elem_t key, elem_t value)
 {
-  int bucket_index = (ht->func(key) % no_buckets + no_buckets) % no_buckets;
-  if (bucket_index < 0)
-  {
-    bucket_index += no_buckets;
-  }
+  int bucket_index = get_bucket_index(ht, key);
   entry_t *entry = find_previous_entry_for_key(ht, &ht->buckets[bucket_index], key);
   entry_t *next = entry->next;
 
@@ -160,19 +161,19 @@ void ioopm_hash_table_insert(ioopm_hash_table_t *ht, elem_t key, elem_t value)
 
 elem_t ioopm_hash_table_remove(ioopm_hash_table_t *ht, elem_t key)
 {
-  int bucket = (ht->func(key) % no_buckets + no_buckets) % no_buckets;
-  entry_t *tmp = find_previous_entry_for_key(ht, &ht->buckets[bucket], key);
-  entry_t *next_adj;
+  int bucket = get_bucket_index(ht, key);
+  entry_t *previous_entry = find_previous_entry_for_key(ht, &ht->buckets[bucket], key);
+  entry_t *next_entry;
   elem_t value;
-  while (tmp != NULL && tmp->next != NULL)
+  while (previous_entry != NULL && previous_entry->next != NULL)
   {
-    next_adj = tmp->next->next; // ger oss den vi tar bort pekar på
-    // next_adj är den vi vill länka till tmp
-    // next_adj är den som vi tar borts neighbour
-    value = *(tmp->next->value);
-    free(tmp->next->value);
-    free(tmp->next);
-    tmp->next = next_adj;
+    next_entry = previous_entry->next->next; // ger oss den vi tar bort pekar på
+    // next_entry är den vi vill länka till previous_entry
+    // next_entry är den som vi tar borts neighbour
+    value = *(previous_entry->next->value);
+    free(previous_entry->next->value);
+    free(previous_entry->next);
+    previous_entry->next = next_entry;
   }
   return value;
 }
